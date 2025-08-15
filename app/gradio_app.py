@@ -21,6 +21,8 @@ from sklearn.metrics import roc_auc_score
 from sklearn.exceptions import UndefinedMetricWarning
 warnings.filterwarnings("ignore", category=UndefinedMetricWarning)
 from fastai.tabular.all import load_learner  # lean import
+from pathlib import Path
+from types import SimpleNamespace
 
 # Ensure project root is importable
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -30,6 +32,7 @@ if str(ROOT) not in sys.path:
 from src.features import build_features  # type: ignore
 
 MODEL_PATH = "models/winner_export.pkl"
+DEFAULT_DATA_PATH = Path(ROOT / "data" / "games.csv")
 
 # Global caches
 STATE: Dict[str, Any] = {
@@ -177,7 +180,7 @@ with gr.Blocks(theme=theme, title="NFL Win Probability") as demo:
     gr.Markdown("Upload a games CSV to generate features & model probabilities. Filter and inspect individual matchups.")
     with gr.Row():
         with gr.Column(scale=1):
-            file_in = gr.File(label="1. Upload games CSV", file_types=[".csv"])
+            file_in = gr.File(label="1. Upload games CSV (optional – auto loads data/games.csv if present)", file_types=[".csv"])
             summary_md = gr.Markdown(label="Dataset Summary")
             error_md = gr.Markdown(visible=False)
             season_filter = gr.CheckboxGroup(label="Season(s)")
@@ -215,6 +218,14 @@ with gr.Blocks(theme=theme, title="NFL Win Probability") as demo:
     team_filter.change(filter_table, [season_filter, week_filter, team_filter, search_box], [games_df, game_select])
     random_btn.click(lambda: pick_random_game(STATE.get("preds")), outputs=game_select)
     game_select.change(show_game, inputs=game_select, outputs=[game_md, prob_html])
+
+    def bootstrap():  # executed on initial load
+        if DEFAULT_DATA_PATH.exists():
+            fake = SimpleNamespace(name=str(DEFAULT_DATA_PATH))
+            return process_upload(fake)
+        return ("", f"Default data file not found at {DEFAULT_DATA_PATH}", pd.DataFrame(), gr.update(choices=[], value=[]), gr.update(choices=[], value=[]), gr.update(choices=[], value=None))
+
+    demo.load(bootstrap, outputs=[summary_md, error_md, games_df, season_filter, week_filter, team_filter])
 
 if __name__ == "__main__":  # pragma: no cover
     demo.launch(server_name="0.0.0.0", share=False)
