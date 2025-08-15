@@ -34,7 +34,10 @@ from src.features import build_features, load_raw  # type: ignore
 ALL_TEAMS_LABEL = "All Teams"
 
 MODEL_PATH = "models/winner_export.pkl"
-DEFAULT_DATA_PATH = Path(ROOT / "data" / "games.csv")
+# Prefer DuckDB snapshot if present, else fallback to CSV
+DEFAULT_DUCKDB = Path(ROOT / "data" / "games.duckdb")
+DEFAULT_CSV = Path(ROOT / "data" / "games.csv")
+DEFAULT_DATA_PATH = DEFAULT_DUCKDB if DEFAULT_DUCKDB.exists() else DEFAULT_CSV
 
 # Global caches
 STATE: Dict[str, Any] = {
@@ -426,10 +429,10 @@ with gr.Blocks(theme=theme, title="NFL Win Probability", css=CUSTOM_CSS) as demo
     <h1 style='margin:0'>NFL Home Win Probability</h1>
     <span style='font-size:14px;color:#555'>FastAI Tabular Neural Net</span>
     </div>""")
-    gr.Markdown("Upload a games CSV to generate features & model probabilities. Filter and inspect individual matchups.")
+    gr.Markdown("Upload a games CSV or DuckDB file to generate features & model probabilities. Filter and inspect individual matchups.")
     with gr.Row():
         with gr.Column(scale=1):
-            file_in = gr.File(label="1. Upload games CSV (optional – auto loads data/games.csv if present)", file_types=[".csv"])
+            file_in = gr.File(label="1. Upload games file (CSV or DuckDB). Auto loads data/games.duckdb or games.csv if present.", file_types=[".csv", ".duckdb"])
             summary_md = gr.Markdown(label="Dataset Summary")
             error_md = gr.Markdown(visible=False)
             season_filter = gr.CheckboxGroup(label="Season(s)", elem_classes=["clicky"]) 

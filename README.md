@@ -4,7 +4,7 @@ End‑to‑end open demo: leak‑safe feature engineering from raw game logs →
 
 ---
 ### 1. What this repo does
-- Ingests a historical NFL games CSV (`data/games.csv`).
+- Ingests a historical NFL games dataset from CSV (`data/games.csv`) or DuckDB (`data/games.duckdb`).
 - Engineers only leak‑safe, pre‑game features (no betting lines, no future info, no targets in inputs).
 - Trains a fastai tabular neural network with time‑aware splits (train / validation / future test seasons).
 - Exports a lightweight `Learner` (`models/winner_export.pkl`).
@@ -26,8 +26,8 @@ source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# Place your full historical games file at data/games.csv
-# (Must include required columns listed below.)
+# Place your full historical games file at data/games.csv OR data/games.duckdb
+# (DuckDB: any table containing all required columns; first matching table is used.)
 
 python train.py --epochs 25 \
 	--train_end 2021 \
@@ -44,7 +44,8 @@ If you want a public share link, edit the last line in `gradio_app.py` (`demo.la
 
 ---
 ### 3. Data Requirements
-The CSV must contain (case‑sensitive) columns:
+CSV: file must contain (case‑sensitive) columns.  
+DuckDB: at least one table must contain all these columns (a superset is fine):
 ```
 season, date, game_type, week,
 away_team, home_team,
@@ -60,7 +61,7 @@ Constraints / assumptions:
 - One row per game (home/away pairing).
 - `pfr_game_id` unique per game (acts as stable join key).
 
-Missing any of these → `ValueError` in `load_raw()`.
+Missing any of these → `ValueError` in `load_raw()`. DuckDB loader scans tables returned by `SHOW TABLES` and picks the first with all columns.
 
 ---
 ### 4. Feature Engineering (Leak‑Safe)
@@ -123,7 +124,7 @@ Test evaluation: If a future test set exists, prints test ROC‑AUC after traini
 ---
 ### 7. Inference & Gradio App
 `app/gradio_app.py` provides:
-- Upload CSV → immediate feature engineering (keeps constant columns)
+- Upload CSV or DuckDB file → immediate feature engineering (keeps constant columns in app)
 - Batch prediction producing a table of: game id, season, week, home/away teams, home win probability
 - Dynamic filters: multi‑season, multi‑week, team dropdown, free text search (game id or team substring)
 - Random game selector
